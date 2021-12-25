@@ -1,4 +1,8 @@
 #include <stdlib.h>
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include "wasm_context.h"
 #include "esUtil.h"
 
 typedef struct
@@ -161,6 +165,10 @@ void Draw ( ESContext *esContext )
 
 int main ( int argc, char *argv[] )
 {
+    // WASM
+    wasm_run();
+
+    // GL
     ESContext esContext;
     UserData  userData;
 

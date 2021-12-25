@@ -9,12 +9,12 @@ include_directories(third_party/angle/include)
 
 link_directories(third_party/wasmtime/lib)
 link_directories(third_party/angle/lib)
-link_libraries(libEGL.dll.lib libGLESv2.dll.lib)
+link_libraries(libEGL.dll.lib libGLESv2.dll.lib wasmtime.dll.lib)
 
 add_executable(Fabric
         fabric/main.c
         third_party/esUtil/source/esUtil.c
         third_party/esUtil/source/Win32/esUtil_win32.c
         third_party/esUtil/source/Win32/esUtil_TGA.c
-)
+        fabric/wasm_context.c fabric/wasm_context.h)
 
