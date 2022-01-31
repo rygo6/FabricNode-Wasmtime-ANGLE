@@ -16,5 +16,5 @@ add_executable(Fabric
         third_party/esUtil/source/esUtil.c
         third_party/esUtil/source/Win32/esUtil_win32.c
         third_party/esUtil/source/Win32/esUtil_TGA.c
-        fabric/wasm_context.c fabric/wasm_context.h)
+        fabric/wasm_context.c fabric/wasm_context.h fabric/render_context.c fabric/render_context.h)
 
