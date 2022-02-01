@@ -17,13 +17,15 @@ struct em_wasm_context_data {
     wasmtime_module_t* module;
     wasm_engine_t* engine;
 
-    wasmtime_table_t indirectTable;
+    wasmtime_table_t indirect_table;
     wasmtime_memory_t memory;
 
     wasmtime_func_t mainLoopFunc;
     wasmtime_func_t startFunc;
 
     char** shader_sources;
+
+    GLuint program_object;
 
     int fps;
     int infiniteLoop;

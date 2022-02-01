@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
 
     wasmData = CreateEmWasmContext();
     EmWasmCallStart(wasmData);
-    EmWasmCallMainLoop(wasmData);
+//    EmWasmCallMainLoop(wasmData);
 
 //    RenderContextCreate(&Draw);
 }

@@ -63,26 +63,96 @@ wasm_trap_t* EmWasmCallMainLoop(em_wasm_context_data_t *data) {
     return trap;
 }
 
-static wasm_trap_t* GLAttachShaderCb(
+static wasm_trap_t* gl_attach_shader_cb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("GLAttachShaderCb", args, nargs);
-//    PrintArgs("GLAttachShaderCb", args, nargs);
+    //  (type (;4;) (func (param i32 i32)))
+    PrintArgs("gl_attach_shader_cb", args, nargs);
+    GLuint program = args[0].of.i32;
+    GLuint shader = args[1].of.i32;
+    em_wasm_context_data_t *data = env;
+
+//    function _glAttachShader(program, shader) {
+//        GLctx.attachShader(GL.programs[program], GL.shaders[shader]);
+//    }
+
+    glAttachShader(program, shader);
+
     return NULL;
 }
 
-static wasm_trap_t* gl_get_shader_iv_cb(
+static wasm_trap_t* glGetShaderIvCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("gl_get_shader_iv_cb", args, nargs);
+    //  (type (;2;) (func (param i32 i32 i32)))
+    PrintArgs("glGetShaderIvCb", args, nargs);
+    GLuint shader = args[0].of.i32;
+    int pname = args[1].of.i32;
+    int p = args[2].of.i32;
+    em_wasm_context_data_t *data = env;
+
+//    function _glGetShaderiv(shader, pname, p) {
+//        if (!p) {
+//            // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
+//            // if p == null, issue a GL error to notify user about it.
+//            GL.recordError(0x501 /* GL_INVALID_VALUE */);
+//            return;
+//        }
+//        if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
+//            var log = GLctx.getShaderInfoLog(GL.shaders[shader]);
+//            if (log === null) log = '(unknown error)';
+//            // The GLES2 specification says that if the shader has an empty info log,
+//            // a value of 0 is returned. Otherwise the log has a null char appended.
+//            // (An empty string is falsey, so we can just check that instead of
+//            // looking at log.length.)
+//            var logLength = log ? log.length + 1 : 0;
+//            HEAP32[((p)>>2)] = logLength;
+//        } else if (pname == 0x8B88) { // GL_SHADER_SOURCE_LENGTH
+//            var source = GLctx.getShaderSource(GL.shaders[shader]);
+//            // source may be a null, or the empty string, both of which are falsey
+//            // values that we report a 0 length for.
+//            var sourceLength = source ? source.length + 1 : 0;
+//            HEAP32[((p)>>2)] = sourceLength;
+//        } else {
+//            HEAP32[((p)>>2)] = GLctx.getShaderParameter(GL.shaders[shader], pname);
+//        }
+//    }
+
+    if (p == 0) {
+        fprintf(stderr, "p is 0!");
+        return wasm_trap_new((wasm_store_t *) data->store, "glGetShaderIvCb p is 0!");
+    }
+
+    int gl_compile_status = GL_COMPILE_STATUS;
+    int gl_info_log_length = GL_INFO_LOG_LENGTH;
+    int gl_shader_source_length = GL_SHADER_SOURCE_LENGTH;
+
+    GLint compiled;
+
+    if (pname == GL_INFO_LOG_LENGTH) {
+        printf("GL_INFO_LOG_LENGTH");
+        fprintf(stderr, "NOT IMPLEMENTED");
+    } else if (pname == GL_SHADER_SOURCE_LENGTH) {
+        printf("GL_SHADER_SOURCE_LENGTH");
+        fprintf(stderr, "NOT IMPLEMENTED");
+    } else if (pname == GL_COMPILE_STATUS){
+        glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+        wasmtime_memory_data(data->context, &data->memory)[p] = compiled;
+        fprintf(stdout,"GL_COMPILE_STATUS %i\n\n", compiled);
+    } else {
+        fprintf(stderr, "PNAME NOT IMPLEMENTED");
+    }
+
+//    glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+
     return NULL;
 }
 
@@ -130,14 +200,40 @@ static wasm_trap_t* gl_bind_attrib_location_cb(
     return NULL;
 }
 
-static wasm_trap_t* gl_create_program_cb(
+static wasm_trap_t* glCreateProgramCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("gl_create_program_cb", args, nargs);
+    //  (type (;13;) (func (result i32)))
+    PrintArgs("glCreateProgramCb", args, nargs);
+    em_wasm_context_data_t *data = env;
+
+//    function _glCreateProgram() {
+//        var id = GL.getNewId(GL.programs);
+//        var program = GLctx.createProgram();
+//        // Store additional information needed for each shader program:
+//        program.name = id;
+//        // Lazy cache results of glGetProgramiv(GL_ACTIVE_UNIFORM_MAX_LENGTH/GL_ACTIVE_ATTRIBUTE_MAX_LENGTH/GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH)
+//        program.maxUniformLength = program.maxAttributeLength = program.maxUniformBlockNameLength = 0;
+//        program.uniformIdCounter = 1;
+//        GL.programs[id] = program;
+//        return id;
+//    }
+
+    data->program_object = glCreateProgram();
+
+    if (data->program_object == 0)
+    {
+        fprintf(stderr, "Failed to create program!");
+        return wasm_trap_new((wasm_store_t *) data->store, (const wasm_message_t *) "glGetShaderIvCb p is 0!");
+    }
+
+    fprintf(stdout, "Created program_object %i\n\n", data->program_object);
+    results[0].of.i32 = data->program_object;
+
     //return i32
     return NULL;
 }
@@ -172,7 +268,6 @@ static wasm_trap_t* EmscriptenSetMainLoopCb(
         wasmtime_val_t *results,
         size_t nresults) {
     PrintArgs("EmscriptenSetMainLoopCb", args, nargs);
-
     em_wasm_context_data_t *data = env;
 
     int funcIndex = args[0].of.i32;
@@ -180,7 +275,7 @@ static wasm_trap_t* EmscriptenSetMainLoopCb(
     data->infiniteLoop = args[2].of.i32;
 
     wasmtime_val_t func_val;
-    bool found = wasmtime_table_get(data->context, &data->indirectTable, funcIndex, &func_val);
+    bool found = wasmtime_table_get(data->context, &data->indirect_table, funcIndex, &func_val);
     if (!found)
         printf("Failed to find entry in table!");
 
@@ -347,14 +442,24 @@ static wasm_trap_t* gl_vertex_attrib_pointer_cb(
     return NULL;
 }
 
-static wasm_trap_t* gl_compile_shader_cb(
+static wasm_trap_t* glCompileShaderCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("gl_compile_shader_cb", args, nargs);
+    //  (type (;0;) (func (param i32)))
+    PrintArgs("glCompileShaderCb", args, nargs);
+
+    int shader_index = args[0].of.i32;
+
+//    function _glCompileShader(shader) {
+//        GLctx.compileShader(GL.shaders[shader]);
+//    }
+
+    glCompileShader(shader_index);
+
     return NULL;
 }
 
@@ -455,7 +560,6 @@ static wasm_trap_t* glShaderSourceCb(
         size_t nresults) {
     //  (type (;6;) (func (param i32 i32 i32 i32)))
     PrintArgs("glShaderSourceCb", args, nargs);
-
     em_wasm_context_data_t *data = env;
 
 //    function _glShaderSource(shader, shader_count, string, length) {
@@ -479,6 +583,10 @@ static wasm_trap_t* glShaderSourceCb(
     int source_arr_ptr = args[2].of.i32;
     int length_arr_ptr = args[3].of.i32;
 
+    if (shader_count > 1) {
+        fprintf(stderr, "More than 1 shader, not implemented!");
+    }
+
     int subshader_index = 0;
     int sourcePtr = wasmtime_memory_data(data->context, &data->memory)[source_arr_ptr + subshader_index + 0] +
                     (wasmtime_memory_data(data->context, &data->memory)[source_arr_ptr + subshader_index + 1] << 8) +
@@ -496,7 +604,6 @@ static wasm_trap_t* glShaderSourceCb(
 
     char buf[1024]; // Can I get rid of buffer and copy into dynamically alloced shader directly?
 
-    printf("\n");
     int offset = 0;
     uint8_t current = 0;
     do {
@@ -508,10 +615,11 @@ static wasm_trap_t* glShaderSourceCb(
     char *shader_source = (char *)malloc(offset * sizeof(char));
     strcpy_s(shader_source, offset, buf);
 
-    printf("%s", shader_source);
-    printf("\n");
+    printf("\"%s\"\n\n", shader_source);
 
     data->shader_sources[shader_index] = shader_source;
+
+    glShaderSource(shader_index, 1, &shader_source, NULL);
 
     return NULL;
 }
@@ -632,14 +740,14 @@ em_wasm_context_data_t* CreateEmWasmContext() {
                 wasm_functype_new_2_0(
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                GLAttachShaderCb);
+                gl_attach_shader_cb);
 
     define_func(data, linker, env_module, "glGetShaderiv",
                 wasm_functype_new_3_0(
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                gl_get_shader_iv_cb);
+                glGetShaderIvCb);
 
     define_func(data, linker, env_module, "glBindBuffer",
                 wasm_functype_new_2_0(
@@ -669,7 +777,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
     define_func(data, linker, env_module, "glCreateProgram",
                 wasm_functype_new_0_1(
                         wasm_valtype_new_i32()),
-                gl_create_program_cb);
+                glCreateProgramCb);
 
     define_func(data, linker, env_module, "glDeleteShader",
                 wasm_functype_new_1_0(
@@ -742,7 +850,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
     define_func(data, linker, env_module, "glCompileShader",
                 wasm_functype_new_1_0(
                         wasm_valtype_new_i32()),
-                gl_compile_shader_cb);
+                glCompileShaderCb);
 
     define_func(data, linker, env_module, "glUseProgram",
                 wasm_functype_new_1_0(
@@ -864,7 +972,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
         printf("Table not found!\n");
     if (table.kind != WASMTIME_EXTERN_TABLE)
         printf("Table extern is not Table!\n");
-    data->indirectTable  = table.of.table;
+    data->indirect_table  = table.of.table;
 
     const char* memory_name = "memory";
     wasmtime_extern_t memory;
