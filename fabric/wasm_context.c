@@ -3,6 +3,7 @@
 #include <wasm.h>
 #include <wasi.h>
 #include "wasm_context.h"
+#include "esUtil.h"
 
 #define own
 
@@ -40,23 +41,23 @@ static void PrintArgs(const char* name, const wasmtime_val_t *args, size_t nargs
     printf("%s\n", print_result);
 }
 
-wasm_trap_t* EmWasmCallStart(em_wasm_context_data_t *emWasmContextData) {
+wasm_trap_t* EmWasmCallStart(em_wasm_context_data_t *data) {
     const char* start_func_name = "_start";
     wasmtime_extern_t start_func;
-    if (!wasmtime_instance_export_get(emWasmContextData->context, &emWasmContextData->instance, start_func_name, strlen(start_func_name), &start_func))
+    if (!wasmtime_instance_export_get(data->context, &data->instance, start_func_name, strlen(start_func_name), &start_func))
         fprintf(stderr, "Failed to find start function.\n");
 
     wasm_trap_t *trap = NULL;
-    wasmtime_error_t *error = wasmtime_func_call(emWasmContextData->context, &start_func.of.func, NULL, 0, NULL, 0, &trap);
+    wasmtime_error_t *error = wasmtime_func_call(data->context, &start_func.of.func, NULL, 0, NULL, 0, &trap);
     if (error != NULL || trap != NULL)
         PrintError("error calling start", error, trap);
 
     return trap;
 }
 
-wasm_trap_t* EmWasmCallMainLoop(em_wasm_context_data_t *emWasmContextData) {
+wasm_trap_t* EmWasmCallMainLoop(em_wasm_context_data_t *data) {
     wasm_trap_t *trap = NULL;
-    wasmtime_error_t *error = wasmtime_func_call(emWasmContextData->context, &emWasmContextData->mainLoopFunc, NULL, 0, NULL, 0, &trap);
+    wasmtime_error_t *error = wasmtime_func_call(data->context, &data->mainLoopFunc, NULL, 0, NULL, 0, &trap);
     if (error != NULL || trap != NULL)
         PrintError("error calling MainLoop", error, trap);
     return trap;
@@ -172,22 +173,22 @@ static wasm_trap_t* EmscriptenSetMainLoopCb(
         size_t nresults) {
     PrintArgs("EmscriptenSetMainLoopCb", args, nargs);
 
-    em_wasm_context_data_t *emWasmContextData = env;
+    em_wasm_context_data_t *data = env;
 
     int funcIndex = args[0].of.i32;
-    emWasmContextData->fps = args[1].of.i32;
-    emWasmContextData->infiniteLoop = args[2].of.i32;
+    data->fps = args[1].of.i32;
+    data->infiniteLoop = args[2].of.i32;
 
     wasmtime_val_t func_val;
-    bool found = wasmtime_table_get(emWasmContextData->context, &emWasmContextData->indirectTable, funcIndex, &func_val);
+    bool found = wasmtime_table_get(data->context, &data->indirectTable, funcIndex, &func_val);
     if (!found)
         printf("Failed to find entry in table!");
 
-    emWasmContextData->mainLoopFunc = func_val.of.funcref;
-    emWasmContextData->CallMainLoop = EmWasmCallMainLoop;
+    data->mainLoopFunc = func_val.of.funcref;
+    data->CallMainLoop = EmWasmCallMainLoop;
 
     // Run once.
-//    emWasmContextData->CallMainLoop(emWasmContextData);
+//    data->CallMainLoop(data);
 
     return NULL;
 }
@@ -199,8 +200,18 @@ static wasm_trap_t* emscripten_webgl_make_context_current_cb(
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
+
+    //  (type (;1;) (func (param i32) (result i32)))
     PrintArgs("emscripten_webgl_make_context_current_cb", args, nargs);
+
+//    function _emscripten_webgl_make_context_current(contextHandle) {
+//        var success = GL.makeContextCurrent(contextHandle);
+//        return success ? 0 : -5;
+//    }
+
     // return 0
+    results[0].of.i32= 0;
+
     return NULL;
 }
 
@@ -211,31 +222,95 @@ static wasm_trap_t* emscripten_webgl_create_context_cb(
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
+    //  (type (;5;) (func (param i32 i32) (result i32)))
     PrintArgs("emscripten_webgl_create_context_cb", args, nargs);
-    // return 0
+
+//    function _emscripten_webgl_do_create_context(target, attributes) {
+//        var a = attributes >> 2;
+//        var powerPreference = HEAP32[a + (24 >> 2)];
+//        var contextAttributes = {
+//                alpha: !!HEAP32[a + (0 >> 2)],
+//                depth: !!HEAP32[a + (4 >> 2)],
+//                stencil: !!HEAP32[a + (8 >> 2)],
+//                antialias: !!HEAP32[a + (12 >> 2)],
+//                premultipliedAlpha: !!HEAP32[a + (16 >> 2)],
+//                preserveDrawingBuffer: !!HEAP32[a + (20 >> 2)],
+//                powerPreference: __emscripten_webgl_power_preferences[powerPreference],
+//                failIfMajorPerformanceCaveat: !!HEAP32[a + (28 >> 2)],
+//                majorVersion: HEAP32[a + (32 >> 2)],
+//                minorVersion: HEAP32[a + (36 >> 2)],
+//                enableExtensionsByDefault: HEAP32[a + (40 >> 2)],
+//                explicitSwapControl: HEAP32[a + (44 >> 2)],
+//                proxyContextToMainThread: HEAP32[a + (48 >> 2)],
+//                renderViaOffscreenBackBuffer: HEAP32[a + (52 >> 2)],
+//        };
+//        var canvas = findCanvasEventTarget(target);
+//        if (!canvas) {
+//            return 0;
+//        }
+//        if (contextAttributes.explicitSwapControl) {
+//            return 0;
+//        }
+//        var contextHandle = GL.createContext(canvas, contextAttributes);
+//        return contextHandle;
+//    }
+//    function _emscripten_webgl_create_context(a0, a1) {
+//        return _emscripten_webgl_do_create_context(a0, a1);
+//    }
+
+    // return 1
+    results[0].of.i32 = 100;
+
     return NULL;
 }
 
-static wasm_trap_t* emscripten_webgl_init_context_attributes_cb(
+static wasm_trap_t* EmscriptenWebglInitContextAttributesCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("emscripten_webgl_init_context_attributes_cb", args, nargs);
+    PrintArgs("EmscriptenWebglInitContextAttributesCb", args, nargs);
+
+//    function _emscripten_webgl_init_context_attributes(attributes) {
+//        var a = attributes >> 2;
+//        for (var i = 0; i < 56 >> 2; ++i) {
+//            HEAP32[a + i] = 0;
+//        }
+//        HEAP32[a + (0 >> 2)] =
+//        HEAP32[a + (4 >> 2)] =
+//        HEAP32[a + (12 >> 2)] =
+//        HEAP32[a + (16 >> 2)] =
+//        HEAP32[a + (32 >> 2)] =
+//        HEAP32[a + (40 >> 2)] =
+//                1;
+//    }
+
     return NULL;
 }
 
-static wasm_trap_t* emscripten_set_canvas_element_size_cb(
+static wasm_trap_t* EmscriptenSetCanvasElementSizeCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("emscripten_set_canvas_element_size_cb", args, nargs);
+    //  (type (;3;) (func (param i32 i32 i32) (result i32)))
+    PrintArgs("EmscriptenSetCanvasElementSizeCb", args, nargs);
+
+//    function _emscripten_set_canvas_element_size(target, width, height) {
+//        var canvas = findCanvasEventTarget(target);
+//        if (!canvas) return -4;
+//        canvas.width = width;
+//        canvas.height = height;
+//        return 0;
+//    }
+
     // return 0
+    results[0].of.i32 = 0;
+
     return NULL;
 }
 
@@ -371,25 +446,104 @@ static wasm_trap_t* gl_get_program_info_log_cb(
     return NULL;
 }
 
-static wasm_trap_t* gl_shader_source_cb(
+static wasm_trap_t* glShaderSourceCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("gl_shader_source_cb", args, nargs);
+    //  (type (;6;) (func (param i32 i32 i32 i32)))
+    PrintArgs("glShaderSourceCb", args, nargs);
+
+    em_wasm_context_data_t *data = env;
+
+//    function _glShaderSource(shader, shader_count, string, length) {
+//        var source = GL.getSource(shader, shader_count, string, length);
+//        GLctx.shaderSource(GL.shaders[shader], source);
+//    }
+//    getSource: function (shader, shader_count, string, length) {
+//        var source = "";
+//        for (var i = 0; i < shader_count; ++i) {
+//            var len = length ? HEAP32[(length + i * 4) >> 2] : -1;
+//            source += UTF8ToString(
+//                    HEAP32[(string + i * 4) >> 2],
+//                    len < 0 ? undefined : len
+//            );
+//        }
+//        return source;
+//    },
+
+    int shader_index = args[0].of.i32;
+    int shader_count = args[1].of.i32;
+    int source_arr_ptr = args[2].of.i32;
+    int length_arr_ptr = args[3].of.i32;
+
+    int subshader_index = 0;
+    int sourcePtr = wasmtime_memory_data(data->context, &data->memory)[source_arr_ptr + subshader_index + 0] +
+                    (wasmtime_memory_data(data->context, &data->memory)[source_arr_ptr + subshader_index + 1] << 8) +
+                    (wasmtime_memory_data(data->context, &data->memory)[source_arr_ptr + subshader_index + 2] << 16) +
+                    (wasmtime_memory_data(data->context, &data->memory)[source_arr_ptr + subshader_index + 3] << 24);
+
+    int length = -1;
+    if (length_arr_ptr != 0){
+        length = wasmtime_memory_data(data->context, &data->memory)[length_arr_ptr + subshader_index + 0] +
+                     (wasmtime_memory_data(data->context, &data->memory)[length_arr_ptr + subshader_index + 1] << 8) +
+                     (wasmtime_memory_data(data->context, &data->memory)[length_arr_ptr + subshader_index + 2] << 16) +
+                     (wasmtime_memory_data(data->context, &data->memory)[length_arr_ptr + subshader_index + 3] << 24);
+    }
+    // length is 0? If not zero need to implement non-null termination
+
+    char buf[1024]; // Can I get rid of buffer and copy into dynamically alloced shader directly?
+
+    printf("\n");
+    int offset = 0;
+    uint8_t current = 0;
+    do {
+        current = wasmtime_memory_data(data->context, &data->memory)[sourcePtr + offset];
+        buf[offset] = (char)current;
+        offset++;
+    } while (current != 0);
+
+    char *shader_source = (char *)malloc(offset * sizeof(char));
+    strcpy_s(shader_source, offset, buf);
+
+    printf("%s", shader_source);
+    printf("\n");
+
+    data->shader_sources[shader_index] = shader_source;
+
     return NULL;
 }
 
-static wasm_trap_t* gl_create_shader_cb(
+static wasm_trap_t* glCreateShaderCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("gl_create_shader_cb", args, nargs);
+    //  (type (;13;) (func (result i32)))
+    PrintArgs("glCreateShaderCb", args, nargs);
+
+//    function _glCreateShader(shaderType) {
+//        var id = GL.getNewId(GL.shaders);
+//        GL.shaders[id] = GLctx.createShader(shaderType);
+//        return id;
+//    }
+
+    GLenum type = args[0].of.i32;
+    GLuint shader;
+
+    shader = glCreateShader(type);
+
+    if (shader == 0){
+        fprintf(stderr, "could not create shader: \n");
+        return 0;
+    }
+
+    results[0].of.i32 = shader;
+
     return NULL;
 }
 
@@ -553,7 +707,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
     define_func(data, linker, env_module, "emscripten_webgl_init_context_attributes",
                 wasm_functype_new_1_0(
                         wasm_valtype_new_i32()),
-                emscripten_webgl_init_context_attributes_cb);
+                EmscriptenWebglInitContextAttributesCb);
 
     define_func(data, linker, env_module, "emscripten_set_canvas_element_size",
                 wasm_functype_new_3_1(
@@ -561,7 +715,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                emscripten_set_canvas_element_size_cb);
+                EmscriptenSetCanvasElementSizeCb);
 
     define_func(data, linker, env_module, "glDrawArrays",
                 wasm_functype_new_3_0(
@@ -649,13 +803,13 @@ em_wasm_context_data_t* CreateEmWasmContext() {
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                gl_shader_source_cb);
+                glShaderSourceCb);
 
     define_func(data, linker, env_module, "glCreateShader",
                 wasm_functype_new_1_1(
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                gl_create_shader_cb);
+                glCreateShaderCb);
 
 
     // Load our input file to parse it next
@@ -697,7 +851,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
 
     // Make Instance
     wasmtime_instance_t instance;
-    error = wasmtime_linker_instantiate(linker, data->context, data->module, &instance, &trap);
+    error = wasmtime_linker_instantiate(linker, wasmtime_store_context(data->store), data->module, &instance, &trap);
     if (error != NULL || trap != NULL)
         ExitWithError("failed to instantiate", error, trap);
     data->instance = instance;
@@ -705,23 +859,23 @@ em_wasm_context_data_t* CreateEmWasmContext() {
     // Get Table
     const char* table_name = "__indirect_function_table";
     wasmtime_extern_t table;
-    bool table_found = wasmtime_instance_export_get(data->context, &instance, table_name, strlen(table_name), &table);
+    bool table_found = wasmtime_instance_export_get(wasmtime_store_context(data->store), &instance, table_name, strlen(table_name), &table);
     if (!table_found)
         printf("Table not found!\n");
+    if (table.kind != WASMTIME_EXTERN_TABLE)
+        printf("Table extern is not Table!\n");
     data->indirectTable  = table.of.table;
 
+    const char* memory_name = "memory";
+    wasmtime_extern_t memory;
+    bool memory_found = wasmtime_instance_export_get(wasmtime_store_context(data->store), &instance, memory_name, strlen(memory_name), &memory);
+    if (!memory_found)
+        printf("Memory not found!\n");
+    if (memory.kind != WASMTIME_EXTERN_MEMORY)
+        printf("Memory extern is not Memory!\n");
+    data->memory = memory.of.memory;
 
-
-
-    const char* start_func_name = "_start";
-    wasmtime_extern_t start_func;
-    if (!wasmtime_instance_export_get(data->context, &data->instance, start_func_name, strlen(start_func_name), &start_func))
-        fprintf(stderr, "Failed to find start function.\n");
-    trap = NULL;
-    error = wasmtime_func_call(data->context, &start_func.of.func, NULL, 0, NULL, 0, &trap);
-    if (error != NULL || trap != NULL)
-        PrintError("error calling start", error, trap);
-
+    data->shader_sources = malloc(MAX_SHADER_COUNT * sizeof(char *));
 
     return data;
 }

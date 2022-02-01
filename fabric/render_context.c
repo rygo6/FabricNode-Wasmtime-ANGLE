@@ -1,6 +1,7 @@
 #include "render_context.h"
 #include <stdlib.h>
 #include <assert.h>
+#include <stdio.h>
 
 typedef struct {
     // Handle to a program object
@@ -140,7 +141,7 @@ void DrawTiangle(ESContext *esContext) {
     eglSwapBuffers(esContext->eglDisplay, esContext->eglSurface);
 }
 
-int RenderContextCreate(void (ESCALLBACK *drawFunc) (ESContext* )) {
+ESContext InitializeAndCreateWindow() {
     ESContext esContext;
     UserData userData;
 
@@ -149,9 +150,14 @@ int RenderContextCreate(void (ESCALLBACK *drawFunc) (ESContext* )) {
 
     esCreateWindow(&esContext, "Fabric", 640, 480, ES_WINDOW_RGB);
 
-    if (!Init(&esContext))
-        return 0;
+    if (!Init(&esContext)){
+        fprintf(stderr, "Could not init render content. \n");
+    }
 
+    return esContext;
+}
+
+void RenderContextCreate(ESContext esContext, void (ESCALLBACK *drawFunc) (ESContext* )) {
     esRegisterDrawFunc(&esContext, drawFunc);
     esMainLoop(&esContext);
 }

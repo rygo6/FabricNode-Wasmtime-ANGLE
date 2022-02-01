@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 em_wasm_context_data_t *wasmData;
+ESContext esContext;
 
 void Draw(ESContext *esContext) {
 //    fprintf(stdout, "Draw\n");
@@ -11,10 +12,11 @@ void Draw(ESContext *esContext) {
 
 
 int main(int argc, char *argv[]) {
-    wasmData = CreateEmWasmContext();
+    esContext = InitializeAndCreateWindow();
 
-//    EmWasmCallStart(wasmData);
-//    EmWasmCallMainLoop(wasmData);
+    wasmData = CreateEmWasmContext();
+    EmWasmCallStart(wasmData);
+    EmWasmCallMainLoop(wasmData);
 
 //    RenderContextCreate(&Draw);
 }
