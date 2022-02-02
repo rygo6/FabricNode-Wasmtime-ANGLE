@@ -2,21 +2,25 @@
 #include "render_context.h"
 #include <stdio.h>
 
-em_wasm_context_data_t *wasmData;
-ESContext esContext;
+em_wasm_context_data_t *wasm_data;
+ESContext *es_context;
 
 void Draw(ESContext *esContext) {
 //    fprintf(stdout, "Draw\n");
 //    EmWasmCallMainLoop(wasmData);
+//    DrawTriangle(esContext);
 }
 
 
 int main(int argc, char *argv[]) {
-    esContext = InitializeAndCreateWindow();
+    es_context = InitializeAndCreateWindow();
 
-    wasmData = CreateEmWasmContext();
-    EmWasmCallStart(wasmData);
-//    EmWasmCallMainLoop(wasmData);
+//    wasm_data = CreateEmWasmContext();
+//    EmWasmCallStart(wasm_data);
+//    EmWasmCallMainLoop(wasm_data);
 
-//    RenderContextCreate(&Draw);
+    esRegisterDrawFunc(es_context, DrawTriangle);
+    esMainLoop(es_context);
+
+//    RenderContextCreate(es_context, DrawTriangle);
 }

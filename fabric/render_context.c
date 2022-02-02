@@ -117,7 +117,7 @@ int Init(ESContext *esContext) {
     return TRUE;
 }
 
-void DrawTiangle(ESContext *esContext) {
+void DrawTriangle(ESContext *esContext) {
     UserData *userData = esContext->userData;
     GLfloat vVertices[] = {0.0f, 0.5f, 0.0f,
                            -0.5f, -0.5f, 0.0f,
@@ -141,23 +141,29 @@ void DrawTiangle(ESContext *esContext) {
     eglSwapBuffers(esContext->eglDisplay, esContext->eglSurface);
 }
 
-ESContext InitializeAndCreateWindow() {
-    ESContext esContext;
+ESContext* InitializeAndCreateWindow() {
+    ESContext *esContext = malloc(sizeof(ESContext));
+
     UserData userData;
 
-    esInitContext(&esContext);
-    esContext.userData = &userData;
+    esInitContext(esContext);
+    esContext->userData = &userData;
 
-    esCreateWindow(&esContext, "Fabric", 640, 480, ES_WINDOW_RGB);
+    esCreateWindow(esContext, "Fabric", 640, 480, ES_WINDOW_RGB);
 
-    if (!Init(&esContext)){
+    if (!Init(esContext)){
         fprintf(stderr, "Could not init render content. \n");
     }
+
+    esRegisterDrawFunc(esContext, DrawTriangle);
+    esMainLoop(esContext);
+
+//    RenderContextCreate(esContext, DrawTriangle);
 
     return esContext;
 }
 
-void RenderContextCreate(ESContext esContext, void (ESCALLBACK *drawFunc) (ESContext* )) {
-    esRegisterDrawFunc(&esContext, drawFunc);
-    esMainLoop(&esContext);
+void RenderContextCreate(ESContext *esContext, void (ESCALLBACK *drawFunc) (ESContext* )) {
+//    esRegisterDrawFunc(esContext, drawFunc);
+    esMainLoop(esContext);
 }

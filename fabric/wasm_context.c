@@ -85,7 +85,7 @@ static wasm_trap_t* gl_attach_shader_cb(
     return NULL;
 }
 
-static wasm_trap_t* glGetShaderIvCb(
+static wasm_trap_t* gl_get_shader_iv_cb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
@@ -93,7 +93,7 @@ static wasm_trap_t* glGetShaderIvCb(
         wasmtime_val_t *results,
         size_t nresults) {
     //  (type (;2;) (func (param i32 i32 i32)))
-    PrintArgs("glGetShaderIvCb", args, nargs);
+    PrintArgs("gl_get_shader_iv_cb", args, nargs);
     GLuint shader = args[0].of.i32;
     int pname = args[1].of.i32;
     int p = args[2].of.i32;
@@ -128,12 +128,8 @@ static wasm_trap_t* glGetShaderIvCb(
 
     if (p == 0) {
         fprintf(stderr, "p is 0!");
-        return wasm_trap_new((wasm_store_t *) data->store, "glGetShaderIvCb p is 0!");
+        return wasm_trap_new((wasm_store_t *) data->store, "gl_get_shader_iv_cb p is 0!");
     }
-
-    int gl_compile_status = GL_COMPILE_STATUS;
-    int gl_info_log_length = GL_INFO_LOG_LENGTH;
-    int gl_shader_source_length = GL_SHADER_SOURCE_LENGTH;
 
     GLint compiled;
 
@@ -174,7 +170,83 @@ static wasm_trap_t* gl_get_program_iv_cb(
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
+    //  (type (;2;) (func (param i32 i32 i32)))
     PrintArgs("gl_get_program_iv_cb", args, nargs);
+    GLuint programObject = args[0].of.i32;
+    int pname = args[1].of.i32;
+    int p = args[2].of.i32;
+    em_wasm_context_data_t *data = env;
+
+//    function _glGetProgramiv(program, pname, p) {
+//        if (!p) {
+//            // GLES2 specification does not specify how to behave if p is a null pointer. Since calling this function does not make sense
+//            // if p == null, issue a GL error to notify user about it.
+//            GL.recordError(0x501 /* GL_INVALID_VALUE */);
+//            return;
+//        }
+//
+//        if (program >= GL.counter) {
+//            GL.recordError(0x501 /* GL_INVALID_VALUE */);
+//            return;
+//        }
+//
+//        program = GL.programs[program];
+//
+//        if (pname == 0x8B84) { // GL_INFO_LOG_LENGTH
+//            var log = GLctx.getProgramInfoLog(program);
+//            if (log === null) log = '(unknown error)';
+//            HEAP32[((p)>>2)] = log.length + 1;
+//        } else if (pname == 0x8B87 /* GL_ACTIVE_UNIFORM_MAX_LENGTH */) {
+//            if (!program.maxUniformLength) {
+//                for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B86/*GL_ACTIVE_UNIFORMS*/); ++i) {
+//                    program.maxUniformLength = Math.max(program.maxUniformLength, GLctx.getActiveUniform(program, i).name.length+1);
+//                }
+//            }
+//            HEAP32[((p)>>2)] = program.maxUniformLength;
+//        } else if (pname == 0x8B8A /* GL_ACTIVE_ATTRIBUTE_MAX_LENGTH */) {
+//            if (!program.maxAttributeLength) {
+//                for (var i = 0; i < GLctx.getProgramParameter(program, 0x8B89/*GL_ACTIVE_ATTRIBUTES*/); ++i) {
+//                    program.maxAttributeLength = Math.max(program.maxAttributeLength, GLctx.getActiveAttrib(program, i).name.length+1);
+//                }
+//            }
+//            HEAP32[((p)>>2)] = program.maxAttributeLength;
+//        } else if (pname == 0x8A35 /* GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH */) {
+//            if (!program.maxUniformBlockNameLength) {
+//                for (var i = 0; i < GLctx.getProgramParameter(program, 0x8A36/*GL_ACTIVE_UNIFORM_BLOCKS*/); ++i) {
+//                    program.maxUniformBlockNameLength = Math.max(program.maxUniformBlockNameLength, GLctx.getActiveUniformBlockName(program, i).length+1);
+//                }
+//            }
+//            HEAP32[((p)>>2)] = program.maxUniformBlockNameLength;
+//        } else {
+//            HEAP32[((p)>>2)] = GLctx.getProgramParameter(program, pname);
+//        }
+//    }
+
+    if (p == 0) {
+        fprintf(stderr, "p is 0!");
+        return wasm_trap_new((wasm_store_t *) data->store, "gl_get_shader_iv_cb p is 0!");
+    }
+
+    GLint linked;
+    glGetProgramiv(programObject, pname, &linked);
+    wasmtime_memory_data(data->context, &data->memory)[p] = linked;
+    fprintf(stdout,"Linked %i\n\n", linked);
+
+//    if (pname == GL_INFO_LOG_LENGTH) {
+//        printf("GL_INFO_LOG_LENGTH");
+//        fprintf(stderr, "NOT IMPLEMENTED");
+//    } else if (pname == GL_ACTIVE_UNIFORM_MAX_LENGTH) {
+//        printf("GL_ACTIVE_UNIFORM_MAX_LENGTH");
+//        fprintf(stderr, "NOT IMPLEMENTED");
+//    } else if (pname == GL_ACTIVE_ATTRIBUTE_MAX_LENGTH){
+//        fprintf(stdout,"GL_ACTIVE_ATTRIBUTE_MAX_LENGTH %i\n\n", compiled);
+//    } else if (pname == 0x8A35){ //GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH
+//        fprintf(stdout,"GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH %i\n\n", compiled);
+//    } else {
+//        fprintf(stderr, "PNAME NOT IMPLEMENTED");
+//    }
+
+
     return NULL;
 }
 
@@ -186,6 +258,20 @@ static wasm_trap_t* gl_link_program_cb(
         wasmtime_val_t *results,
         size_t nresults) {
     PrintArgs("gl_link_program_cb", args, nargs);
+
+    GLuint programObject = args[0].of.i32;
+
+//    function _glLinkProgram(program) {
+//        program = GL.programs[program];
+//        GLctx.linkProgram(program);
+//        // Invalidate earlier computed uniform->ID mappings, those have now become stale
+//        program.uniformLocsById = 0; // Mark as null-like so that glGetUniformLocation() knows to populate this again.
+//        program.uniformSizeAndIdsByName = {};
+//
+//    }
+
+    glLinkProgram(programObject);
+
     return NULL;
 }
 
@@ -196,7 +282,33 @@ static wasm_trap_t* gl_bind_attrib_location_cb(
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
+    //  (type (;5;) (func (param i32 i32 i32)))
     PrintArgs("gl_bind_attrib_location_cb", args, nargs);
+    em_wasm_context_data_t *data = env;
+
+    GLuint programObject = args[0].of.i32;
+    GLuint index = args[1].of.i32;
+    int name_ptr = args[2].of.i32;
+
+//    function _glBindAttribLocation(program, index, name) {
+//        GLctx.bindAttribLocation(GL.programs[program], index, UTF8ToString(name));
+//    }
+
+    char buf[1024];
+    int offset = 0;
+    uint8_t current = 0;
+    do {
+        current = wasmtime_memory_data(data->context, &data->memory)[name_ptr + offset];
+        buf[offset] = (char)current;
+        offset++;
+    } while (current != 0);
+    char *name = (char *)malloc(offset * sizeof(char));
+    strcpy_s(name, offset, buf);
+
+    fprintf(stdout, "_glBindAttribLocation %i %i %s\n\n", programObject, index, name);
+
+    glBindAttribLocation(programObject, index, name);
+
     return NULL;
 }
 
@@ -228,7 +340,7 @@ static wasm_trap_t* glCreateProgramCb(
     if (data->program_object == 0)
     {
         fprintf(stderr, "Failed to create program!");
-        return wasm_trap_new((wasm_store_t *) data->store, (const wasm_message_t *) "glGetShaderIvCb p is 0!");
+        return wasm_trap_new((wasm_store_t *) data->store, (const wasm_message_t *) "gl_get_shader_iv_cb p is 0!");
     }
 
     fprintf(stdout, "Created program_object %i\n\n", data->program_object);
@@ -267,6 +379,7 @@ static wasm_trap_t* EmscriptenSetMainLoopCb(
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
+    //  (type (;2;) (func (param i32 i32 i32)))
     PrintArgs("EmscriptenSetMainLoopCb", args, nargs);
     em_wasm_context_data_t *data = env;
 
@@ -518,14 +631,25 @@ static wasm_trap_t* gl_gen_buffers_cb(
     return NULL;
 }
 
-static wasm_trap_t* gl_clear_color_cb(
+static wasm_trap_t* glClearColorCb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
         size_t nargs,
         wasmtime_val_t *results,
         size_t nresults) {
-    PrintArgs("gl_clear_color_cb", args, nargs);
+    //  (type (;15;) (func (param f32 f32 f32 f32)))
+    PrintArgs("glClearColorCb", args, nargs);
+
+    GLclampf r = args[0].of.f32;
+    GLclampf g = args[1].of.f32;
+    GLclampf b = args[2].of.f32;
+    GLclampf a = args[3].of.f32;
+
+//    function _glClearColor(x0, x1, x2, x3) { GLctx['clearColor'](x0, x1, x2, x3) }
+
+    glClearColor(r, g, b, a);
+
     return NULL;
 }
 
@@ -562,6 +686,11 @@ static wasm_trap_t* glShaderSourceCb(
     PrintArgs("glShaderSourceCb", args, nargs);
     em_wasm_context_data_t *data = env;
 
+    int shader_index = args[0].of.i32;
+    int shader_count = args[1].of.i32;
+    int source_arr_ptr = args[2].of.i32;
+    int length_arr_ptr = args[3].of.i32;
+
 //    function _glShaderSource(shader, shader_count, string, length) {
 //        var source = GL.getSource(shader, shader_count, string, length);
 //        GLctx.shaderSource(GL.shaders[shader], source);
@@ -577,11 +706,6 @@ static wasm_trap_t* glShaderSourceCb(
 //        }
 //        return source;
 //    },
-
-    int shader_index = args[0].of.i32;
-    int shader_count = args[1].of.i32;
-    int source_arr_ptr = args[2].of.i32;
-    int length_arr_ptr = args[3].of.i32;
 
     if (shader_count > 1) {
         fprintf(stderr, "More than 1 shader, not implemented!");
@@ -603,7 +727,6 @@ static wasm_trap_t* glShaderSourceCb(
     // length is 0? If not zero need to implement non-null termination
 
     char buf[1024]; // Can I get rid of buffer and copy into dynamically alloced shader directly?
-
     int offset = 0;
     uint8_t current = 0;
     do {
@@ -634,14 +757,14 @@ static wasm_trap_t* glCreateShaderCb(
     //  (type (;13;) (func (result i32)))
     PrintArgs("glCreateShaderCb", args, nargs);
 
+    GLenum type = args[0].of.i32;
+    GLuint shader;
+
 //    function _glCreateShader(shaderType) {
 //        var id = GL.getNewId(GL.shaders);
 //        GL.shaders[id] = GLctx.createShader(shaderType);
 //        return id;
 //    }
-
-    GLenum type = args[0].of.i32;
-    GLuint shader;
 
     shader = glCreateShader(type);
 
@@ -715,8 +838,7 @@ void Cleanup(em_wasm_context_data_t* data){
 }
 
 em_wasm_context_data_t* CreateEmWasmContext() {
-    em_wasm_context_data_t* data;
-    data = malloc(sizeof(*data));
+    em_wasm_context_data_t* data = malloc(sizeof(em_wasm_context_data_t));
 
     // Set up our context
     data->engine = wasm_engine_new();
@@ -747,7 +869,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                glGetShaderIvCb);
+                gl_get_shader_iv_cb);
 
     define_func(data, linker, env_module, "glBindBuffer",
                 wasm_functype_new_2_0(
@@ -890,7 +1012,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
                         wasm_valtype_new_f32(),
                         wasm_valtype_new_f32(),
                         wasm_valtype_new_f32()),
-                gl_clear_color_cb);
+                glClearColorCb);
 
     define_func(data, linker, env_module, "glDeleteProgram",
                 wasm_functype_new_1_0(

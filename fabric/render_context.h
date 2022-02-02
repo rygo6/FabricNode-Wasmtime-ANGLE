@@ -3,7 +3,8 @@
 
 #include "esUtil.h"
 
-ESContext InitializeAndCreateWindow();
-void RenderContextCreate(ESContext esContext, void (ESCALLBACK *drawFunc) (ESContext* ));
+void DrawTriangle(ESContext *esContext);
+ESContext* InitializeAndCreateWindow();
+void RenderContextCreate(ESContext *esContext, void (ESCALLBACK *drawFunc) (ESContext* ));
 
 #endif //FABRIC_RENDER_CONTEXT_H
