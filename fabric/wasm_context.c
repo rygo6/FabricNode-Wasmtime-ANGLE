@@ -57,7 +57,7 @@ wasm_trap_t* EmWasmCallStart(em_wasm_context_data_t *data) {
 
 wasm_trap_t* EmWasmCallMainLoop(em_wasm_context_data_t *data) {
     wasm_trap_t *trap = NULL;
-    wasmtime_error_t *error = wasmtime_func_call(data->context, &data->mainLoopFunc, NULL, 0, NULL, 0, &trap);
+    wasmtime_error_t *error = wasmtime_func_call(data->context, &data->main_loop_func, NULL, 0, NULL, 0, &trap);
     if (error != NULL || trap != NULL)
         PrintError("error calling MainLoop", error, trap);
     return trap;
@@ -372,7 +372,7 @@ static wasm_trap_t* gl_get_shader_info_log_cb(
     return NULL;
 }
 
-static wasm_trap_t* EmscriptenSetMainLoopCb(
+static wasm_trap_t* emscripte_set_main_loop_cb(
         void *env,
         wasmtime_caller_t *caller,
         const wasmtime_val_t *args,
@@ -380,7 +380,7 @@ static wasm_trap_t* EmscriptenSetMainLoopCb(
         wasmtime_val_t *results,
         size_t nresults) {
     //  (type (;2;) (func (param i32 i32 i32)))
-    PrintArgs("EmscriptenSetMainLoopCb", args, nargs);
+    PrintArgs("emscripte_set_main_loop_cb", args, nargs);
     em_wasm_context_data_t *data = env;
 
     int funcIndex = args[0].of.i32;
@@ -392,8 +392,10 @@ static wasm_trap_t* EmscriptenSetMainLoopCb(
     if (!found)
         printf("Failed to find entry in table!");
 
-    data->mainLoopFunc = func_val.of.funcref;
+    data->main_loop_func = func_val.of.funcref;
     data->CallMainLoop = EmWasmCallMainLoop;
+
+    esMainLoop(data->es_context);
 
     // Run once.
 //    data->CallMainLoop(data);
@@ -919,7 +921,7 @@ em_wasm_context_data_t* CreateEmWasmContext() {
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32(),
                         wasm_valtype_new_i32()),
-                EmscriptenSetMainLoopCb);
+                emscripte_set_main_loop_cb);
 
     define_func(data, linker, env_module, "emscripten_webgl_make_context_current",
                 wasm_functype_new_1_1(

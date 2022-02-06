@@ -3,12 +3,6 @@
 #include <assert.h>
 #include <stdio.h>
 
-typedef struct {
-    // Handle to a program object
-    GLuint programObject;
-
-} UserData;
-
 GLuint LoadShader(GLenum type, const char *shaderSrc) {
     GLuint shader;
     GLint compiled;
@@ -49,7 +43,7 @@ GLuint LoadShader(GLenum type, const char *shaderSrc) {
     return shader;
 }
 
-int Init(ESContext *esContext) {
+int render_context_init(ESContext *esContext) {
     UserData *userData = esContext->userData;
     char vShaderStr[] =
             "attribute vec4 vPosition;    \n"
@@ -141,29 +135,21 @@ void DrawTriangle(ESContext *esContext) {
     eglSwapBuffers(esContext->eglDisplay, esContext->eglSurface);
 }
 
-ESContext* InitializeAndCreateWindow() {
+ESContext* render_context_alloc() {
     ESContext *esContext = malloc(sizeof(ESContext));
-
     UserData userData;
-
     esInitContext(esContext);
     esContext->userData = &userData;
-
-    esCreateWindow(esContext, "Fabric", 640, 480, ES_WINDOW_RGB);
-
-    if (!Init(esContext)){
-        fprintf(stderr, "Could not init render content. \n");
-    }
-
-    esRegisterDrawFunc(esContext, DrawTriangle);
-    esMainLoop(esContext);
-
-//    RenderContextCreate(esContext, DrawTriangle);
-
     return esContext;
 }
 
-void RenderContextCreate(ESContext *esContext, void (ESCALLBACK *drawFunc) (ESContext* )) {
-//    esRegisterDrawFunc(esContext, drawFunc);
+void render_context_create(ESContext *esContext, void (ESCALLBACK *drawFunc) (ESContext* )) {
+    esCreateWindow(esContext, "Fabric", 640, 480, ES_WINDOW_RGB);
+
+    if (!render_context_init(esContext)){
+        fprintf(stderr, "Could not init render content. \n");
+    }
+
+    esRegisterDrawFunc(esContext, drawFunc);
     esMainLoop(esContext);
 }

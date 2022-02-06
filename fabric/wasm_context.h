@@ -20,8 +20,8 @@ struct em_wasm_context_data {
     wasmtime_table_t indirect_table;
     wasmtime_memory_t memory;
 
-    wasmtime_func_t mainLoopFunc;
-    wasmtime_func_t startFunc;
+    wasmtime_func_t main_loop_func;
+    wasmtime_func_t start_func;
 
     char** shader_sources;
 
@@ -29,6 +29,8 @@ struct em_wasm_context_data {
 
     int fps;
     int infiniteLoop;
+
+    ESContext *es_context;
 };
 
 wasm_trap_t* EmWasmCallMainLoop(em_wasm_context_data_t *data);
