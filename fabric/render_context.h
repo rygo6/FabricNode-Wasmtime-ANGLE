@@ -4,7 +4,7 @@
 #include "esUtil.h"
 
 typedef struct {
-    GLuint programObject;
+    int programObject;
 } UserData;
 
 void DrawTriangle(ESContext *esContext);
