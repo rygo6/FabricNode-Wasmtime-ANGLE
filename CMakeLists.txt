@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(Fabric)
+project(FabricNode)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -11,10 +11,10 @@ link_directories(third_party/wasmtime/lib)
 link_directories(third_party/angle/lib)
 link_libraries(libEGL.dll.lib libGLESv2.dll.lib wasmtime.dll.lib)
 
-add_executable(Fabric
-        fabric/main.c
+add_executable(src
+        src/main.c
         third_party/esUtil/source/esUtil.c
         third_party/esUtil/source/Win32/esUtil_win32.c
         third_party/esUtil/source/Win32/esUtil_TGA.c
-        fabric/wasm_context.c fabric/wasm_context.h fabric/render_context.c fabric/render_context.h)
+        src/wasm_context.c src/wasm_context.h src/render_context.c src/render_context.h)
 
